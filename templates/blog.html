@@ -10,15 +10,21 @@
 
     {% endfor %}
 
+    <hr>
+
     <form method="post">
-        <label>
-            <div>Comment</div>
-            <textarea name="comment">{{comment}}</textarea>
-        </label>
 
-        <div class="error">{{error}}</div>
+        <div class="form-group">
+            <label for="comment">Create a comment</label>
+            <textarea class="form-control" rows="2" id="comment" name="comment">{{comment}}</textarea>
+        </div>
 
-        <input type="submit" name="submit">
+        {% if error %}
+            <p class="bg-danger">{{error}}</p>
+        {% endif %}
+
+        <button type="submit" class="btn btn-default">Submit</button>
+
     </form>
 
 {% endblock %}

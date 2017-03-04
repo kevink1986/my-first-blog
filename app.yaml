@@ -3,6 +3,13 @@ api_version: 1
 threadsafe: yes
 
 handlers:
+
+# static content handlers
+- url: /(img|css|fonts|js)/(.*)
+  static_files: static/\1/\2
+  upload: static/(img|css|fonts|js|svg)/(.*)
+
+# dynamic handlers
 - url: .*
   script: main.app
 

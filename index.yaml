@@ -14,4 +14,9 @@ indexes:
   properties:
   - name: blog_key
   - name: created
+
+- kind: Comment
+  properties:
+  - name: blog_key
+  - name: created
     direction: desc

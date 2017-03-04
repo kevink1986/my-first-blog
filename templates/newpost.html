@@ -2,22 +2,23 @@
 
 {% block content %}
 
-    <h1>{{name}}</h1>
+    <h1>{{page_title}}</h1>
 
     <form method="post">
-        <label>
-            <div>Title</div>
-            <input type="text" name="title" value="{{title}}">
-        </label>
+        <div class="form-group">
+            <label for="title">Blog Title</label>
+            <input type="text" class="form-control" id="title" name="title" placeholder="Blog title" value="{{title}}">
+        </div>
+        <div class="form-group">
+            <label for="blog">Blog text</label>
+            <textarea class="form-control" rows="10" id="blog" name="blog">{{blog}}</textarea>
+        </div>
 
-        <label>
-            <div>Blog</div>
-            <textarea name="blog">{{blog}}</textarea>
-        </label>
+        {% if error %}
+            <p class="bg-danger">{{error}}</p>
+        {% endif %}
 
-        <div class="error">{{error}}</div>
-
-        <input type="submit" name="submit">
+      <button type="submit" class="btn btn-default">Submit</button>
     </form>
 
 {% endblock %}

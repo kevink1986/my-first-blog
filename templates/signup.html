@@ -2,6 +2,8 @@
 
 {% block content %}
 
+    <h1>Signup!</h1>
+
     <form method="post">
       <div class="form-group">
         <label for="username">Username</label>
@@ -18,14 +20,14 @@
         {% endif %}
       </div>
       <div class="form-group">
-        <label for="password_check">Password</label>
+        <label for="password_check">Password check</label>
         <input type="password" class="form-control" id="password_check" name="password_check" placeholder="Password check">
         {% if error_check %}
             <span id="helpBlock2" class="help-block">{{error_check}}</span>
         {% endif %}
       </div>
       <div class="form-group">
-        <label for="email">Password</label>
+        <label for="email">Email</label>
         <input type="email" class="form-control" id="email" name="email" placeholder="Email">
         {% if error_email %}
             <span id="helpBlock2" class="help-block">{{error_email}}</span>

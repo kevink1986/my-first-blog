@@ -90,26 +90,6 @@ class Handler(webapp2.RequestHandler):
         self.user = uid and User.by_id(int(uid))
 
 
-class Blog(ndb.Model):
-    """Models an individual blog entry with content and date."""
-    title = ndb.StringProperty(required = True)
-    blog = ndb.TextProperty(required = True)
-    created = ndb.DateTimeProperty(auto_now_add=True)
-    modified = ndb.DateTimeProperty(auto_now=True)
-
-    @classmethod
-    def by_id(cls, bid):
-        return cls.get_by_id(bid)
-
-    @classmethod
-    def register(cls, title, blog):
-        return cls(title = title,
-                    blog = blog)
-
-    def render(self):
-        self._render_text = self.blog.replace('\n', "<br>")
-        return render_str("blog_text.html", b = self)
-
 class User(ndb.Model):
     """Models an individual User entry"""
     username = ndb.StringProperty(required = True)
@@ -138,6 +118,29 @@ class User(ndb.Model):
         if u and valid_pw(username, pw, u.pw_hash):
             return u
 
+class Blog(ndb.Model):
+    """Models an individual blog entry with content and date."""
+    user_key = ndb.KeyProperty(kind=User)
+    title = ndb.StringProperty(required = True)
+    blog = ndb.TextProperty(required = True)
+    created = ndb.DateTimeProperty(auto_now_add=True)
+    modified = ndb.DateTimeProperty(auto_now=True)
+
+    @classmethod
+    def by_id(cls, bid):
+        return cls.get_by_id(bid)
+
+    @classmethod
+    def register(cls, user_key, title, blog):
+        return cls(user_key = user_key,
+                   title = title,
+                   blog = blog)
+
+    def render(self):
+        self._render_text = self.blog.replace('\n', "<br>")
+        return render_str("blog_text.html", b = self)
+
+
 class Comment(ndb.Model):
     """Models an individual comment entry with content and date."""
     user_key = ndb.KeyProperty(kind=User)
@@ -145,20 +148,6 @@ class Comment(ndb.Model):
     comment = ndb.TextProperty(required = True)
     created = ndb.DateTimeProperty(auto_now_add=True)
     modified = ndb.DateTimeProperty(auto_now=True)
-
-#     def create_entity_with_parent_keys():
-#     account_key = ndb.Key(Account, 'sandy@example.com')
-
-#     # Ask Datastore to allocate an ID.
-#     new_id = ndb.Model.allocate_ids(size=1, parent=account_key)[0]
-
-#     # Datastore returns us an integer ID that we can use to create the message
-#     # key
-# message_key = ndb.Key('Message', new_id, parent=account_key)
-
-#     @classmethod
-#     def query_book(cls, ancestor_key):
-#         return cls.query(ancestor=ancestor_key).order(-cls.date)
 
     @classmethod
     def register(cls, user_key, blog_key, comment):
@@ -170,14 +159,56 @@ class Comment(ndb.Model):
         self._render_text = self.comment.replace('\n', "<br>")
         return render_str("comment_text.html", c = self)
 
+class Rate(ndb.Model):
+    """Models an individual comment entry with content and date."""
+    user_key = ndb.KeyProperty(kind=User)
+    blog_key = ndb.KeyProperty(kind=Blog)
+    rate = ndb.StringProperty(required = True)
+
+    @classmethod
+    def get_rates(cls, blog_key):
+        up = cls.query(cls.blog_key == blog_key, cls.rate == "up").count()
+        down = cls.query(cls.blog_key == blog_key, cls.rate == "down").count()
+        return up, down
+
+    @classmethod
+    def register(cls, user_key, blog_key, rate):
+        return cls(user_key = user_key,
+                   blog_key = blog_key,
+                   rate = rate)
+
+
 class MainPage(Handler):
     def get(self):
         blogs = Blog.query().order(-Blog.created).fetch(10)
-        self.render("front.html", name = "Blog", blogs = blogs)
+
+        for b in blogs:
+            b.up_rates, b.down_rates = Rate.get_rates(b.key)
+
+        self.render("front.html", user = self.user, blogs = blogs)
+
+    def post(self):
+        self.up_rate = self.request.get('up_rate')
+        self.down_rate = self.request.get('down_rate')
+
+        if self.up_rate:
+            rate = "up"
+            blog_id = self.up_rate
+        elif self.down_rate:
+             rate = "down"
+             blog_id = self.down_rate
+
+        self.blog = Blog.by_id(int(blog_id))
+        r = Rate.register(self.user.key,
+                          self.blog.key,
+                          rate)
+        r.put()
+
+        self.redirect('/')
 
 class SignupHandler(Handler):
     def get(self):
-        self.render("signup.html")
+        self.render("signup.html", user = self.user)
 
     def post(self):
         error = False
@@ -218,7 +249,7 @@ class SignupHandler(Handler):
 
 class LoginHandler(Handler):
     def get(self):
-        self.render('login.html')
+        self.render('login.html', user = self.user)
 
     def post(self):
         self.username = self.request.get('username')
@@ -236,50 +267,110 @@ class LogoutHandler(Handler):
 
 class NewPostHandler(Handler):
     def get(self):
-        name = "New post"
         if self.user:
-            self.render("newpost.html", name = name)
+            self.blog_id = self.request.get("q")
+            template_vars = dict(user = self.user)
+
+            template_vars["page_title"] = "Create a new blog post!"
+
+            if self.blog_id:
+                blog = Blog.by_id(int(self.blog_id))
+
+                template_vars["title"] = blog.title
+                template_vars["blog"] = blog.blog
+                template_vars["page_title"] = "Edit your blog post!"
+
+            self.render("newpost.html", **template_vars)
         else:
             self.redirect('/login')
 
     def post(self):
+        self.blog_id = self.request.get("q")
         self.title = self.request.get("title")
         self.blog = self.request.get("blog")
 
         if self.title and self.blog:
-            b = Blog.register(self.title, self.blog)
+            if self.blog_id:
+                b = Blog.by_id(int(self.blog_id))
+                b.title = self.title
+                b.blog = self.blog
+            else:
+                b = Blog.register(self.user.key, self.title, self.blog)
+
             b.put()
 
             self.redirect("/" + str(b.key.id()))
         else:
             error = "we need both a title and some blog text!"
-            self.render("newpost.html", title=title, blog=blog, error=error)
+            self.render("newpost.html", user = self.user, title = self.title, blog = self.blog, error=error)
 
 class BlogPostHandler(Handler):
     def get(self, blog_id):
-        blog = Blog.by_id(int(blog_id))
+        self.blog = Blog.by_id(int(blog_id))
 
-        if not blog:
+        if not self.blog:
             self.error(404)
             return
 
-        comments = Comment.query(Comment.blog_key == blog.key).order(-Comment.created)
+        comments = Comment.query(Comment.blog_key == self.blog.key).order(Comment.created)
 
-        self.render("blog.html", blog = blog, comments = comments)
+        self.blog.up_rates, self.blog.down_rates = Rate.get_rates(self.blog.key)
+
+        self.render("blog.html", user = self.user, blog = self.blog, comments = comments)
 
     def post(self, blog_id):
+        self.up_rate = self.request.get('up_rate')
+        self.down_rate = self.request.get('down_rate')
         self.comment = self.request.get('comment')
 
+        self.blog = Blog.by_id(int(blog_id))
+
+        if self.up_rate or self.down_rate:
+            if self.up_rate:
+                rate = "up"
+            else:
+                 rate = "down"
+
+            r = Rate.register(self.user.key,
+                              self.blog.key,
+                              rate)
+            r.put()
+
+            self.redirect('/' + blog_id)
+            return
+
         if self.comment:
-            blog = Blog.by_id(int(blog_id))
-            c = Comment.register(self.user.key, blog.key, self.comment)
+            c = Comment.register(self.user.key, self.blog.key, self.comment)
             c.put()
 
             self.redirect('/' + blog_id)
         else:
             error = "Submit a comment!"
             blog = Blog.by_id(int(blog_id))
-            self.render("blog.html", blog = blog, error = error)
+            self.render("blog.html", user = self.user, blog = blog, error = error)
+
+
+class RateHandler(Handler):
+    def get(self):
+        self.blog_id = self.request.get("q")
+        self.rate = self.request.get("r")
+
+        self.blog = Blog.by_id(int(self.blog_id))
+
+        if not self.blog and self.rate not in ["up","down"]:
+            self.error(404)
+            return
+
+        if self.blog.user_key == self.user.key:
+            template_vars = dict(error_rating = "You cannot rate your own blog posts!")
+            self.render("blog.html", user = self.user, blog = self.blog, **template_vars)
+        else:
+            r = Rate.register(self.user.key,
+                                  self.blog.key,
+                                  self.rate)
+            r.put()
+
+            self.redirect("/" + self.blog_id)
 
 
 app = webapp2.WSGIApplication([('/?', MainPage),
@@ -287,23 +378,7 @@ app = webapp2.WSGIApplication([('/?', MainPage),
                                ('/login', LoginHandler),
                                ('/logout', LogoutHandler),
                                ('/new', NewPostHandler),
-                               ('/([0-9]+)', BlogPostHandler)
+                               ('/([0-9]+)', BlogPostHandler),
+                               ('/rate', RateHandler)
                                ],
                                debug=True)
-
-
-# # Map URLs to handlers
-# routes = [
-#   Route('/', handler='handlers.RootHandler'),
-#   Route('/profile', handler='handlers.ProfileHandler', name='profile'),
-#   Route('/preference', handler='handlers.PreferenceHandler', name='preference'),
-#   Route('/event', handler='handlers.EventHandler', name='event'),
-
-#   Route('/logout', handler='handlers.AuthHandler:logout', name='logout'),
-#   Route('/auth/<provider>',
-#     handler='handlers.AuthHandler:_simple_auth', name='auth_login'),
-#   Route('/auth/<provider>/callback',
-#     handler='handlers.AuthHandler:_auth_callback', name='auth_callback')
-# ]
-
-# app = WSGIApplication(routes, config=app_config, debug=True)

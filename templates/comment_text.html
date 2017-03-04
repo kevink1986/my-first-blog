@@ -1,7 +1,8 @@
 <div class="comment">
 
-    <div class="user">{{c.user_key.get().username}}</div>
-    <div class="created_date">{{c.created.strftime('%d-%m-%Y')}}</div>
-    <pre class="comment_body">{{c.comment}}</pre>
+    <hr>
+
+    <p class="comment_body">{{c.comment}}</p>
+    <p class="comment_author text-right"><small>Comment by {{c.user_key.get().username}} created on {{c.created.strftime('%d-%m-%Y')}}</small></p>
 
 </div>
