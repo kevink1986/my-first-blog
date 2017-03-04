@@ -97,6 +97,15 @@ class Blog(ndb.Model):
     created = ndb.DateTimeProperty(auto_now_add=True)
     modified = ndb.DateTimeProperty(auto_now=True)
 
+    @classmethod
+    def by_id(cls, bid):
+        return cls.get_by_id(bid)
+
+    @classmethod
+    def register(cls, title, blog):
+        return cls(title = title,
+                    blog = blog)
+
     def render(self):
         self._render_text = self.blog.replace('\n', "<br>")
         return render_str("blog_text.html", b = self)
@@ -119,7 +128,7 @@ class User(ndb.Model):
     @classmethod
     def register(cls, username, pw, email = None):
         pw_hash = make_pw_hash(username, pw)
-        return User(username = username,
+        return cls(username = username,
                     pw_hash = pw_hash,
                     email = email)
 
@@ -129,6 +138,37 @@ class User(ndb.Model):
         if u and valid_pw(username, pw, u.pw_hash):
             return u
 
+class Comment(ndb.Model):
+    """Models an individual comment entry with content and date."""
+    user_key = ndb.KeyProperty(kind=User)
+    blog_key = ndb.KeyProperty(kind=Blog)
+    comment = ndb.TextProperty(required = True)
+    created = ndb.DateTimeProperty(auto_now_add=True)
+    modified = ndb.DateTimeProperty(auto_now=True)
+
+#     def create_entity_with_parent_keys():
+#     account_key = ndb.Key(Account, 'sandy@example.com')
+
+#     # Ask Datastore to allocate an ID.
+#     new_id = ndb.Model.allocate_ids(size=1, parent=account_key)[0]
+
+#     # Datastore returns us an integer ID that we can use to create the message
+#     # key
+# message_key = ndb.Key('Message', new_id, parent=account_key)
+
+#     @classmethod
+#     def query_book(cls, ancestor_key):
+#         return cls.query(ancestor=ancestor_key).order(-cls.date)
+
+    @classmethod
+    def register(cls, user_key, blog_key, comment):
+        return cls(user_key = user_key,
+                   blog_key = blog_key,
+                   comment = comment)
+
+    def render(self):
+        self._render_text = self.comment.replace('\n', "<br>")
+        return render_str("comment_text.html", c = self)
 
 class MainPage(Handler):
     def get(self):
@@ -203,14 +243,12 @@ class NewPostHandler(Handler):
             self.redirect('/login')
 
     def post(self):
-        title = self.request.get("title")
-        blog = self.request.get("blog")
+        self.title = self.request.get("title")
+        self.blog = self.request.get("blog")
 
-        if title and blog:
-            b = Blog(title = title, blog = blog)
+        if self.title and self.blog:
+            b = Blog.register(self.title, self.blog)
             b.put()
-
-            b = Blog.query().fetch(1)[0]
 
             self.redirect("/" + str(b.key.id()))
         else:
@@ -219,13 +257,29 @@ class NewPostHandler(Handler):
 
 class BlogPostHandler(Handler):
     def get(self, blog_id):
-        blog = Blog.get_by_id(int(blog_id))
+        blog = Blog.by_id(int(blog_id))
 
         if not blog:
             self.error(404)
             return
 
-        self.render("blog.html", blog = blog)
+        comments = Comment.query(Comment.blog_key == blog.key).order(-Comment.created)
+
+        self.render("blog.html", blog = blog, comments = comments)
+
+    def post(self, blog_id):
+        self.comment = self.request.get('comment')
+
+        if self.comment:
+            blog = Blog.by_id(int(blog_id))
+            c = Comment.register(self.user.key, blog.key, self.comment)
+            c.put()
+
+            self.redirect('/' + blog_id)
+        else:
+            error = "Submit a comment!"
+            blog = Blog.by_id(int(blog_id))
+            self.render("blog.html", blog = blog, error = error)
 
 
 app = webapp2.WSGIApplication([('/?', MainPage),
@@ -236,3 +290,20 @@ app = webapp2.WSGIApplication([('/?', MainPage),
                                ('/([0-9]+)', BlogPostHandler)
                                ],
                                debug=True)
+
+
+# # Map URLs to handlers
+# routes = [
+#   Route('/', handler='handlers.RootHandler'),
+#   Route('/profile', handler='handlers.ProfileHandler', name='profile'),
+#   Route('/preference', handler='handlers.PreferenceHandler', name='preference'),
+#   Route('/event', handler='handlers.EventHandler', name='event'),
+
+#   Route('/logout', handler='handlers.AuthHandler:logout', name='logout'),
+#   Route('/auth/<provider>',
+#     handler='handlers.AuthHandler:_simple_auth', name='auth_login'),
+#   Route('/auth/<provider>/callback',
+#     handler='handlers.AuthHandler:_auth_callback', name='auth_callback')
+# ]
+
+# app = WSGIApplication(routes, config=app_config, debug=True)

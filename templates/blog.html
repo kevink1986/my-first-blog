@@ -4,4 +4,21 @@
 
     {{ blog.render() | safe }}
 
+    {% for c in comments %}
+
+        {{ c.render() | safe }}
+
+    {% endfor %}
+
+    <form method="post">
+        <label>
+            <div>Comment</div>
+            <textarea name="comment">{{comment}}</textarea>
+        </label>
+
+        <div class="error">{{error}}</div>
+
+        <input type="submit" name="submit">
+    </form>
+
 {% endblock %}
