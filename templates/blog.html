@@ -19,8 +19,8 @@
             <textarea class="form-control" rows="2" id="comment" name="comment">{{comment}}</textarea>
         </div>
 
-        {% if error %}
-            <p class="bg-danger">{{error}}</p>
+        {% if error_comment %}
+            <p class="bg-danger">{{error_comment}}</p>
         {% endif %}
 
         <button type="submit" class="btn btn-default">Submit</button>

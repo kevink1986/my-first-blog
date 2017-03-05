@@ -178,16 +178,23 @@ class Rate(ndb.Model):
                    rate = rate)
 
 
-class MainPage(Handler):
-    def get(self):
+class RootHandler(Handler):
+    def render_front(self, error = None):
         blogs = Blog.query().order(-Blog.created).fetch(10)
 
         for b in blogs:
             b.up_rates, b.down_rates = Rate.get_rates(b.key)
 
-        self.render("front.html", user = self.user, blogs = blogs)
+        self.render("front.html",
+                    user = self.user,
+                    blogs = blogs,
+                    error = error)
+
+    def get(self):
+        self.render_front()
 
     def post(self):
+        have_error = False
         self.up_rate = self.request.get('up_rate')
         self.down_rate = self.request.get('down_rate')
 
@@ -195,20 +202,31 @@ class MainPage(Handler):
             rate = "up"
             blog_id = self.up_rate
         elif self.down_rate:
-             rate = "down"
-             blog_id = self.down_rate
+            rate = "down"
+            blog_id = self.down_rate
 
         self.blog = Blog.by_id(int(blog_id))
-        r = Rate.register(self.user.key,
-                          self.blog.key,
-                          rate)
-        r.put()
 
-        self.redirect('/')
+        if not self.user:
+            error = "You have to be logged in to rate blogs"
+            have_error = True
+        elif self.user.key == self.blog.user_key:
+            error = "You cannot rate your own blogs"
+            have_error = True
+
+        if have_error:
+            self.render_front(error = error)
+        else:
+            r = Rate.register(self.user.key,
+                              self.blog.key,
+                              rate)
+            r.put()
+
+            self.redirect('/')
 
 class SignupHandler(Handler):
     def get(self):
-        self.render("signup.html", user = self.user)
+        self.render("signup.html")
 
     def post(self):
         error = False
@@ -241,7 +259,9 @@ class SignupHandler(Handler):
         if error:
             self.render('signup.html', **template_vars)
         else:
-            u = User.register(self.username, self.password, self.email)
+            u = User.register(self.username,
+                              self.password,
+                              self.email)
             u.put()
 
             self.login(u)
@@ -249,7 +269,7 @@ class SignupHandler(Handler):
 
 class LoginHandler(Handler):
     def get(self):
-        self.render('login.html', user = self.user)
+        self.render('login.html')
 
     def post(self):
         self.username = self.request.get('username')
@@ -259,6 +279,12 @@ class LoginHandler(Handler):
         if u:
             self.login(u)
             self.redirect('/')
+        else:
+            template_vars = dict(username = self.username)
+
+            template_vars['error'] = "This is not a valid username and password combination!"
+
+            self.render("login.html", **template_vars)
 
 class LogoutHandler(Handler):
     def get(self):
@@ -268,17 +294,9 @@ class LogoutHandler(Handler):
 class NewPostHandler(Handler):
     def get(self):
         if self.user:
-            self.blog_id = self.request.get("q")
             template_vars = dict(user = self.user)
 
             template_vars["page_title"] = "Create a new blog post!"
-
-            if self.blog_id:
-                blog = Blog.by_id(int(self.blog_id))
-
-                template_vars["title"] = blog.title
-                template_vars["blog"] = blog.blog
-                template_vars["page_title"] = "Edit your blog post!"
 
             self.render("newpost.html", **template_vars)
         else:
@@ -295,17 +313,23 @@ class NewPostHandler(Handler):
                 b.title = self.title
                 b.blog = self.blog
             else:
-                b = Blog.register(self.user.key, self.title, self.blog)
+                b = Blog.register(self.user.key,
+                                  self.title,
+                                  self.blog)
 
             b.put()
 
             self.redirect("/" + str(b.key.id()))
         else:
             error = "we need both a title and some blog text!"
-            self.render("newpost.html", user = self.user, title = self.title, blog = self.blog, error=error)
+            self.render("newpost.html",
+                        user = self.user,
+                        title = self.title,
+                        blog = self.blog,
+                        error=error)
 
 class BlogPostHandler(Handler):
-    def get(self, blog_id):
+    def render_blog(self, blog_id, error = None, error_comment = None):
         self.blog = Blog.by_id(int(blog_id))
 
         if not self.blog:
@@ -316,69 +340,132 @@ class BlogPostHandler(Handler):
 
         self.blog.up_rates, self.blog.down_rates = Rate.get_rates(self.blog.key)
 
-        self.render("blog.html", user = self.user, blog = self.blog, comments = comments)
+        template_vars = dict(user = self.user,
+                             blog = self.blog,
+                             comments = comments,
+                             error = error,
+                             error_comment = error_comment)
+
+        self.render("blog.html", **template_vars)
+
+
+    def get(self, blog_id):
+        self.render_blog(blog_id)
 
     def post(self, blog_id):
+        have_error = False
         self.up_rate = self.request.get('up_rate')
         self.down_rate = self.request.get('down_rate')
         self.comment = self.request.get('comment')
 
         self.blog = Blog.by_id(int(blog_id))
 
+        template_vars = dict(blog_id = blog_id)
+
         if self.up_rate or self.down_rate:
-            if self.up_rate:
-                rate = "up"
+            if not self.user:
+                template_vars["error"] = "You have to be logged in to rate blogs"
+                have_error = True
+            elif self.user.key == self.blog.user_key:
+                template_vars ["error"] = "You cannot rate your own blogs"
+                have_error = True
+
+            if have_error:
+                self.render("blog.html", **template_vars)
+                return
             else:
-                 rate = "down"
+                if self.up_rate:
+                    rate = "up"
+                else:
+                     rate = "down"
 
-            r = Rate.register(self.user.key,
-                              self.blog.key,
-                              rate)
-            r.put()
+                r = Rate.register(self.user.key,
+                                  self.blog.key,
+                                  rate)
+                r.put()
 
-            self.redirect('/' + blog_id)
-            return
+                self.redirect('/' + blog_id)
+                return
 
         if self.comment:
-            c = Comment.register(self.user.key, self.blog.key, self.comment)
-            c.put()
+            if not self.user:
+                template_vars['error'] = "You ave to be logged in to create comments!"
+                have_error = True
 
-            self.redirect('/' + blog_id)
+            if have_error:
+                self.render("blog.html", **template_vars)
+            else:
+                c = Comment.register(self.user.key,
+                                     self.blog.key,
+                                     self.comment)
+                c.put()
+
+                self.redirect('/' + blog_id)
         else:
-            error = "Submit a comment!"
-            blog = Blog.by_id(int(blog_id))
-            self.render("blog.html", user = self.user, blog = blog, error = error)
+            template_vars["error_comment"] = "Submit a comment!"
+            self.render_blog(**template_vars)
 
-
-class RateHandler(Handler):
+class EditPostHandler(Handler):
     def get(self):
-        self.blog_id = self.request.get("q")
-        self.rate = self.request.get("r")
+        have_error = True
+        self.blog_id = self.request.get('b')
 
         self.blog = Blog.by_id(int(self.blog_id))
 
-        if not self.blog and self.rate not in ["up","down"]:
+        if not self.blog:
             self.error(404)
             return
 
-        if self.blog.user_key == self.user.key:
-            template_vars = dict(error_rating = "You cannot rate your own blog posts!")
-            self.render("blog.html", user = self.user, blog = self.blog, **template_vars)
+        template_vars = dict(user = self.user,
+                             title = self.blog.title,
+                             blog = self.blog.blog,
+                             page_title = "Edit your blog post!")
+
+        if not self.user:
+            template_vars["error"] =  "You have to be logged in to edit blog posts"
+            template_vars["disable"] = True
+        elif self.user.key != self.blog.user_key:
+            template_vars["error"] =  "You can only edit you own blog posts!"
+            template_vars["disable"] = True
+
+        self.render("newpost.html", **template_vars)
+
+    def post(self):
+        self.blog_id = self.request.get("b")
+        self.title = self.request.get("title")
+        self.blog = self.request.get("blog")
+
+        if self.title and self.blog:
+            if self.blog_id:
+                b = Blog.by_id(int(self.blog_id))
+                b.title = self.title
+                b.blog = self.blog
+            else:
+                self.redirect('/')
+
+            b.put()
+
+            self.redirect("/" + str(b.key.id()))
         else:
-            r = Rate.register(self.user.key,
-                                  self.blog.key,
-                                  self.rate)
-            r.put()
+            template_vars = dict(user = self.user,
+                                 title = self.title,
+                                 blog = self.blog,
+                                 page_title = "Edit your blog post!")
 
-            self.redirect("/" + self.blog_id)
+            template_vars['error'] = "we need both a title and some blog text!"
+
+            self.render("newpost.html", **template_vars)
 
 
-app = webapp2.WSGIApplication([('/?', MainPage),
-                               ('/signup', SignupHandler),
-                               ('/login', LoginHandler),
-                               ('/logout', LogoutHandler),
-                               ('/new', NewPostHandler),
-                               ('/([0-9]+)', BlogPostHandler),
-                               ('/rate', RateHandler)
-                               ],
-                               debug=True)
+# Map URLs to handlers
+routes = [
+  webapp2.Route('/', handler=RootHandler, name = 'root'),
+  webapp2.Route('/signup', handler=SignupHandler, name='signup'),
+  webapp2.Route('/login', handler=LoginHandler, name='login'),
+  webapp2.Route('/logout', handler=LogoutHandler, name='logout'),
+  webapp2.Route('/new', handler=NewPostHandler, name='new_blog'),
+  webapp2.Route('/<blog_id:\d+>', handler=BlogPostHandler, name='blog'),
+  webapp2.Route('/edit', handler=EditPostHandler, name='edit_blog')
+]
+
+app = webapp2.WSGIApplication(routes, debug=True)

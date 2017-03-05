@@ -5,20 +5,20 @@
     <h1>{{page_title}}</h1>
 
     <form method="post">
-        <div class="form-group">
-            <label for="title">Blog Title</label>
-            <input type="text" class="form-control" id="title" name="title" placeholder="Blog title" value="{{title}}">
-        </div>
-        <div class="form-group">
-            <label for="blog">Blog text</label>
-            <textarea class="form-control" rows="10" id="blog" name="blog">{{blog}}</textarea>
-        </div>
 
-        {% if error %}
-            <p class="bg-danger">{{error}}</p>
-        {% endif %}
+        <fieldset {% if disable %}disabled{% endif %}>
+            <div class="form-group">
+                <label for="title">Blog Title</label>
+                <input type="text" class="form-control" id="title" name="title" placeholder="Blog title" value="{{title}}">
+            </div>
+            <div class="form-group">
+                <label for="blog">Blog text</label>
+                <textarea class="form-control" rows="10" id="blog" name="blog">{{blog}}</textarea>
+            </div>
 
-      <button type="submit" class="btn btn-default">Submit</button>
+            <button type="submit" class="btn btn-default">Submit</button>
+        </fieldset>
+
     </form>
 
 {% endblock %}

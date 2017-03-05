@@ -1,7 +1,7 @@
 <div class="jumbotron">
 
     <h1><a href="/{{b.key.id()}}">{{b.title}}</a></h1>
-    <p class="blog_author"><a href="/new?q={{b.key.id()}}"><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span></a> Created by {{b.user_key.get().username}} on {{b.created.strftime('%d-%m-%Y')}}</p>
+    <p class="blog_author"><a href="/edit?b={{b.key.id()}}"><span class="glyphicon glyphicon-pencil" aria-hidden="true"></span></a> Created by {{b.user_key.get().username}} on {{b.created.strftime('%d-%m-%Y')}}</p>
     <p>{{b.blog}}</p>
 
     <form method="post">

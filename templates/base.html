@@ -30,6 +30,14 @@
                 <h3 class="text-muted"><a href="/">My first blog app</a></h3>
             </div>
 
+            {% if error%}
+                <div class="row">
+                    <div class="col-md-12 text-center">
+                        <p class="bg-danger">{{error}}</p>
+                    </div>
+                </div>
+            {% endif %}
+
             {% block content%}
             {% endblock %}
 
