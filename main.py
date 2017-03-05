@@ -16,48 +16,64 @@ jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir),
 
 secret = "12345"
 
+
 # Function that is used to render blog content
 def render_str(template, **params):
     t = jinja_env.get_template(template)
     return t.render(params)
 
+
 # Functions that are used for data validation submitted via forms
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
+
+
 def valid_username(username):
     return username and USER_RE.match(username)
 
+
 PASS_RE = re.compile(r"^.{3,20}$")
+
+
 def valid_password(password):
     return password and PASS_RE.match(password)
 
-EMAIL_RE  = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+
+EMAIL_RE = re.compile(r'^[\S]+@[\S]+\.[\S]+$')
+
+
 def valid_email(email):
     return not email or EMAIL_RE.match(email)
 
-# Hashing values
+
+# Functions that are used to make and check secure values
 def make_secure_val(s):
     return "%s|%s" % (s, hmac.new(secret, s).hexdigest())
+
 
 def check_secure_val(h):
     h = h.split('|')
     if h[1] == hmac.new(secret, h[0]).hexdigest():
         return h[0]
 
+
 def make_salt():
     return ''.join([random.choice(string.ascii_letters) for n in xrange(5)])
+
 
 def make_pw_hash(username, pw, salt = None):
     if not salt:
         salt = make_salt()
     hash = hashlib.sha256(username + pw + salt).hexdigest()
-    return "%s|%s" % (hash,salt)
+    return "%s|%s" % (hash, salt)
+
 
 def valid_pw(username, pw, h):
     salt = h.split('|')[1]
     return h == make_pw_hash(username, pw, salt)
 
-# Base Handler
+
 class Handler(webapp2.RequestHandler):
+    """Base handler with functions that are used on all pages"""
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
 
@@ -109,14 +125,15 @@ class User(ndb.Model):
     def register(cls, username, pw, email = None):
         pw_hash = make_pw_hash(username, pw)
         return cls(username = username,
-                    pw_hash = pw_hash,
-                    email = email)
+                   pw_hash = pw_hash,
+                   email = email)
 
     @classmethod
     def login(cls, username, pw):
         u = cls.by_username(username)
         if u and valid_pw(username, pw, u.pw_hash):
             return u
+
 
 class Blog(ndb.Model):
     """Models an individual blog entry with content and date."""
@@ -159,8 +176,9 @@ class Comment(ndb.Model):
         self._render_text = self.comment.replace('\n', "<br>")
         return render_str("comment_text.html", c = self)
 
+
 class Rate(ndb.Model):
-    """Models an individual comment entry with content and date."""
+    """Models an individual rate entry for a single blog post."""
     user_key = ndb.KeyProperty(kind=User)
     blog_key = ndb.KeyProperty(kind=Blog)
     rate = ndb.StringProperty(required = True)
@@ -179,6 +197,7 @@ class Rate(ndb.Model):
 
 
 class RootHandler(Handler):
+    """Root handler that renders the the home page with 10 blog posts."""
     def render_front(self, error = None):
         blogs = Blog.query().order(-Blog.created).fetch(10)
 
@@ -224,7 +243,9 @@ class RootHandler(Handler):
 
             self.redirect('/')
 
+
 class SignupHandler(Handler):
+    """Sign up handler that is used to signup users."""
     def get(self):
         self.render("signup.html")
 
@@ -236,7 +257,7 @@ class SignupHandler(Handler):
         self.email = self.request.get("email")
 
         template_vars = dict(username = self.username,
-                      email = self.email)
+                             email = self.email)
 
         if not valid_username(self.username):
             template_vars['error_username'] = "That's not a valid username."
@@ -267,7 +288,9 @@ class SignupHandler(Handler):
             self.login(u)
             self.redirect('/?')
 
+
 class LoginHandler(Handler):
+    """Login handler that is used to login users."""
     def get(self):
         self.render('login.html')
 
@@ -282,16 +305,21 @@ class LoginHandler(Handler):
         else:
             template_vars = dict(username = self.username)
 
-            template_vars['error'] = "This is not a valid username and password combination!"
+            template_vars['error'] = ("This is not a valid username and",
+                                      " password combination!")
 
             self.render("login.html", **template_vars)
 
+
 class LogoutHandler(Handler):
+    """Logout handler that used to logout users."""
     def get(self):
         self.logout()
         self.redirect('/')
 
+
 class NewPostHandler(Handler):
+    """New blog post handler that is used to create new blog posts."""
     def get(self):
         if self.user:
             template_vars = dict(user = self.user)
@@ -328,8 +356,14 @@ class NewPostHandler(Handler):
                         blog = self.blog,
                         error=error)
 
+
 class BlogPostHandler(Handler):
-    def render_blog(self, blog_id, error = None, error_comment = None):
+    """Blog handler that is used to render blog posts and
+    to add blog comments"""
+    def render_blog(self,
+                    blog_id,
+                    error = None,
+                    error_comment = None):
         self.blog = Blog.by_id(int(blog_id))
 
         if not self.blog:
@@ -348,7 +382,6 @@ class BlogPostHandler(Handler):
 
         self.render("blog.html", **template_vars)
 
-
     def get(self, blog_id):
         self.render_blog(blog_id)
 
@@ -364,10 +397,12 @@ class BlogPostHandler(Handler):
 
         if self.up_rate or self.down_rate:
             if not self.user:
-                template_vars["error"] = "You have to be logged in to rate blogs"
+                template_vars["error"] = """You have to be logged in
+                                         to rate blogs"""
                 have_error = True
             elif self.user.key == self.blog.user_key:
-                template_vars ["error"] = "You cannot rate your own blogs"
+                template_vars["error"] = """You cannot rate your own
+                                          blogs"""
                 have_error = True
 
             if have_error:
@@ -377,7 +412,7 @@ class BlogPostHandler(Handler):
                 if self.up_rate:
                     rate = "up"
                 else:
-                     rate = "down"
+                    rate = "down"
 
                 r = Rate.register(self.user.key,
                                   self.blog.key,
@@ -389,11 +424,12 @@ class BlogPostHandler(Handler):
 
         if self.comment:
             if not self.user:
-                template_vars['error'] = "You ave to be logged in to create comments!"
+                template_vars['error'] = """You have to be logged in to
+                                         create comments!"""
                 have_error = True
 
             if have_error:
-                self.render("blog.html", **template_vars)
+                self.render_blog(**template_vars)
             else:
                 c = Comment.register(self.user.key,
                                      self.blog.key,
@@ -405,7 +441,9 @@ class BlogPostHandler(Handler):
             template_vars["error_comment"] = "Submit a comment!"
             self.render_blog(**template_vars)
 
+
 class EditPostHandler(Handler):
+    """Edit blog post handler that is used to edit blog posts."""
     def get(self):
         have_error = True
         self.blog_id = self.request.get('b')
@@ -422,10 +460,11 @@ class EditPostHandler(Handler):
                              page_title = "Edit your blog post!")
 
         if not self.user:
-            template_vars["error"] =  "You have to be logged in to edit blog posts"
+            template_vars["error"] = """You have to be logged in to edit
+                                     blog posts"""
             template_vars["disable"] = True
         elif self.user.key != self.blog.user_key:
-            template_vars["error"] =  "You can only edit you own blog posts!"
+            template_vars["error"] = "You can only edit you own blog posts!"
             template_vars["disable"] = True
 
         self.render("newpost.html", **template_vars)
@@ -459,13 +498,13 @@ class EditPostHandler(Handler):
 
 # Map URLs to handlers
 routes = [
-  webapp2.Route('/', handler=RootHandler, name = 'root'),
-  webapp2.Route('/signup', handler=SignupHandler, name='signup'),
-  webapp2.Route('/login', handler=LoginHandler, name='login'),
-  webapp2.Route('/logout', handler=LogoutHandler, name='logout'),
-  webapp2.Route('/new', handler=NewPostHandler, name='new_blog'),
-  webapp2.Route('/<blog_id:\d+>', handler=BlogPostHandler, name='blog'),
-  webapp2.Route('/edit', handler=EditPostHandler, name='edit_blog')
+    webapp2.Route('/', handler=RootHandler, name = 'root'),
+    webapp2.Route('/signup', handler=SignupHandler, name = 'signup'),
+    webapp2.Route('/login', handler=LoginHandler, name = 'login'),
+    webapp2.Route('/logout', handler=LogoutHandler, name = 'logout'),
+    webapp2.Route('/new', handler=NewPostHandler, name = 'new_blog'),
+    webapp2.Route('/<blog_id:\d+>', handler=BlogPostHandler, name = 'blog'),
+    webapp2.Route('/edit', handler=EditPostHandler, name = 'edit_blog')
 ]
 
 app = webapp2.WSGIApplication(routes, debug=True)
