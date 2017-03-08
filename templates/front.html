@@ -10,9 +10,9 @@
 
     {% endif %}
 
-    {% for b in blogs %}
+    {% for post in posts %}
 
-        {{ b.render() | safe }}
+        {% include 'post_text.html' %}
 
     {% endfor %}
 
