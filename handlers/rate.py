@@ -9,8 +9,13 @@ class RatePostHandler(BaseHandler):
         self.post = Post.by_id(int(post_id))
 
         if not self.user:
-            error = "error_user"
-            have_error = True
+            self.redirect('/login')
+            return
+
+        if not self.post:
+            self.redirect('/')
+            return
+
         elif self.user_owns_post(self.post):
             error = "error_owner"
             have_error = True

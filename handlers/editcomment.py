@@ -29,6 +29,10 @@ class EditCommentHandler(BaseHandler):
     def post(self, post_id, comment_id):
         self.comment = self.request.get("comment")
 
+        if not self.comment:
+            self.redirect('/' + str(post_id))
+            return
+
         if self.comment:
             c = Comment.by_id(int(comment_id))
             c.comment = self.comment

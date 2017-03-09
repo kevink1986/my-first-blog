@@ -11,16 +11,16 @@ class EditPostHandler(BaseHandler):
             self.redirect('/')
             return
 
+        if not self.user:
+            self.redirect('/login')
+            return
+
         template_vars = dict(user=self.user,
                              title=self.post.title,
                              post=self.post.post,
                              page_title="Edit your blog post!")
 
-        if not self.user:
-            template_vars["error"] = """You have to be logged in to edit
-                                     blog posts"""
-            template_vars["disable"] = True
-        elif not self.user_owns_post(self.post):
+        if not self.user_owns_post(self.post):
             template_vars["error"] = "You can only edit you own blog posts!"
             template_vars["disable"] = True
 
@@ -31,6 +31,10 @@ class EditPostHandler(BaseHandler):
         self.post = self.request.get("post")
 
         p = Post.by_id(int(post_id))
+
+        if not p:
+            self.redirect('/')
+            return
 
         if not self.user_owns_post(p):
             return self.redirect('/')

@@ -18,11 +18,15 @@ class DeleteCommentHandler(BaseHandler):
         self.render("comment_delete.html", **template_vars)
 
     def post(self, post_id, comment_id):
-        c = Comment.by_id(int(comment_id))
+        self.comment = Comment.by_id(int(comment_id))
 
-        if not self.user_owns_comment(c):
+        if not self.comment:
+            self.redirect('/' + str(post_id))
+            return
+
+        if not self.user_owns_comment(self.comment):
             return self.redirect('/')
 
-        c.key.delete()
+        self.comment.key.delete()
 
         self.redirect('/' + str(post_id))

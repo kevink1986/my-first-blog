@@ -18,34 +18,3 @@ class RootHandler(BaseHandler):
 
     def get(self):
         self.render_front()
-
-    def post(self):
-        have_error = False
-        self.up_rate = self.request.get('up_rate')
-        self.down_rate = self.request.get('down_rate')
-
-        if self.up_rate:
-            rate = "up"
-            post_id = self.up_rate
-        elif self.down_rate:
-            rate = "down"
-            post_id = self.down_rate
-
-        self.post = Post.by_id(int(post_id))
-
-        if not self.user:
-            error = "You have to be logged in to rate blogs"
-            have_error = True
-        elif self.user.key == self.post.user_key:
-            error = "You cannot rate your own blogs"
-            have_error = True
-
-        if have_error:
-            self.render_front(error=error)
-        else:
-            r = Rate.register(self.user.key,
-                              self.post.key,
-                              rate)
-            r.put()
-
-            self.redirect('/')

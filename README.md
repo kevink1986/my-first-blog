@@ -8,7 +8,7 @@ https://my-first-blog-udacity.appspot.com
 ## Run Locally
 1. Install the [Google cloud SDK]. You'll need python 2.7 and [pip 1.4 or later](http://www.pip-installer.org/en/latest/installing.html) installed too.
 
-2. Clone this repo with
+2. Clone this repo with [https://github.com/kevink1986/my-first-blog.git]
 
 3. cd my-first-blog
 

@@ -47,6 +47,10 @@ class BlogPostHandler(BaseHandler):
 
         self.post = Post.by_id(int(post_id))
 
+        if not self.post:
+            self.redirect('/')
+            return
+
         template_vars = dict(post_id=post_id)
 
         if not self.user:

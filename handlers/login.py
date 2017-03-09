@@ -19,7 +19,6 @@ class LoginHandler(BaseHandler):
         else:
             template_vars = dict(username=self.username)
 
-            template_vars['error'] = ("This is not a valid username and",
-                                      " password combination!")
+            template_vars['error'] = "This is not a valid username and password combination!"
 
             self.render("login.html", **template_vars)
