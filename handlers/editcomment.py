@@ -22,7 +22,7 @@ class EditCommentHandler(BaseHandler):
             template_vars["error"] = """You have to be logged in to edit
                                      blog comments"""
             template_vars["disable"] = True
-        elif self.user_owns_comment(self.comment):
+        elif not self.user_owns_comment(self.comment):
             template_vars["error"] = "You can only edit you own blog comments!"
             template_vars["disable"] = True
 
