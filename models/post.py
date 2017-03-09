@@ -1,6 +1,7 @@
 from google.appengine.ext import ndb
 from user import User
 
+
 class Post(ndb.Model):
     """Models an individual blog entry with content and date."""
     user_key = ndb.KeyProperty(kind=User)

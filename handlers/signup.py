@@ -5,6 +5,7 @@ from models import User
 
 class SignupHandler(BaseHandler):
     """Sign up handler that is used to signup users."""
+
     def get(self):
         self.render("signup.html")
 

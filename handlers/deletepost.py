@@ -1,8 +1,10 @@
 from base import BaseHandler
 from models import *
 
+
 class DeletePostHandler(BaseHandler):
     """Edit blog post handler that is used to edit blog posts."""
+
     def get(self, post_id):
         self.post = Post.by_id(int(post_id))
 

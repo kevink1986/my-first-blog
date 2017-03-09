@@ -2,6 +2,7 @@ from google.appengine.ext import ndb
 from user import User
 from post import Post
 
+
 class Comment(ndb.Model):
     """Models an individual comment entry with content and date."""
     user_key = ndb.KeyProperty(kind=User)

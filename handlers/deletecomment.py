@@ -1,8 +1,10 @@
 from base import BaseHandler
 from models import *
 
+
 class DeleteCommentHandler(BaseHandler):
     """Edit blog post handler that is used to edit blog posts."""
+
     def get(self, post_id, comment_id):
         self.comment = Comment.by_id(int(comment_id))
 

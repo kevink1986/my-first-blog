@@ -1,6 +1,7 @@
 from base import BaseHandler
 from models import *
 
+
 class BlogPostHandler(BaseHandler):
     """Blog handler that is used to render blog posts and
     to add blog comments"""

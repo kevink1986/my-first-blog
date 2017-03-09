@@ -1,9 +1,11 @@
 from base import BaseHandler
 from models import *
 
+
 class RatePostHandler(BaseHandler):
     """Blog handler that is used to render blog posts and
     to add blog comments"""
+
     def get(self, direction, post_id):
         have_error = False
         self.post = Post.by_id(int(post_id))
