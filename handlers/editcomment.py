@@ -35,6 +35,10 @@ class EditCommentHandler(BaseHandler):
             self.redirect('/' + str(post_id))
             return
 
+        if not self.user:
+            self.redirect('/login')
+            return
+
         if self.comment:
             c = Comment.by_id(int(comment_id))
             c.comment = self.comment

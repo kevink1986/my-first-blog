@@ -18,8 +18,11 @@ class RatePostHandler(BaseHandler):
             self.redirect('/')
             return
 
-        elif self.user_owns_post(self.post):
+        if self.user_owns_post(self.post):
             error = "error_owner"
+            have_error = True
+        elif Rate.get_rate_by_user(self.user, self.post) > 0:
+            error = "already_rated"
             have_error = True
 
         if have_error:

@@ -17,16 +17,12 @@ class BlogPostHandler(BaseHandler):
             self.redirect('/')
             return
 
-        comments = Comment.query(
-            Comment.post_key == self.post.key).order(
-            Comment.created)
-
         self.post.up_rates, self.post.down_rates = Rate.get_rates(
             self.post.key)
 
         template_vars = dict(user=self.user,
                              post=self.post,
-                             comments=comments,
+                             comments=self.post.comments,
                              error=error,
                              error_comment=error_comment)
 
@@ -36,6 +32,8 @@ class BlogPostHandler(BaseHandler):
         elif self.error == "error_owner":
             template_vars["error"] = """You cannot rate your own
                                      posts!"""
+        elif self.error == "already_rated":
+            template_vars["error"] = """You can only rate a post once!"""
 
         self.render("blogpost.html", **template_vars)
 
